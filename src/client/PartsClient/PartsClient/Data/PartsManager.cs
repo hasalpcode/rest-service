@@ -13,17 +13,41 @@ public static class PartsManager
     // TODO: Add fields for BaseAddress, Url, and authorizationKey
     static readonly string BaseAddress = "URL GOES HERE";
     static readonly string Url = $"{BaseAddress}/api/";
+    private static string authorizationKey;
 
     static HttpClient client;
 
     private static async Task<HttpClient> GetClient()
     {
-        throw new NotImplementedException();
+        if (client != null)
+            return client;
+
+        client = new HttpClient();
+
+        if (string.IsNullOrEmpty(authorizationKey))
+        {
+            authorizationKey = await client.GetStringAsync($"{Url}login");
+            authorizationKey = JsonSerializer.Deserialize<string>(authorizationKey);
+        }
+
+        client.DefaultRequestHeaders.Add("Authorization", authorizationKey);
+        client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+        return client;
     }
 
     public static async Task<IEnumerable<Part>> GetAll()
     {
-        throw new NotImplementedException();                
+        if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
+            return new List<Part>();
+
+        var client = await GetClient();
+        string result = await client.GetStringAsync($"{Url}parts");
+
+        return JsonSerializer.Deserialize<List<Part>>(result, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        });
     }
 
     public static async Task<Part> Add(string partName, string supplier, string partType)
